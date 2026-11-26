@@ -1,5 +1,6 @@
 import { GAME_CONFIG } from "./config";
 import { movePosition } from "./movement";
+import { applyPickup, applyCompletedSecond } from "./scoring";
 import { collectItem } from "./collisions";
 import { createItemSlots, respawnDueItems, samePosition } from "./spawning";
 import type { GameInput, GameState } from "./types";
@@ -15,6 +16,9 @@ export function createGame(seed = 1): GameState {
     items: spawned.items,
     pickups: { work: 0, skill: 0, coffee: 0, meeting: 0 },
     rngState: spawned.seed,
+    energy: GAME_CONFIG.START_ENERGY,
+    score: 0,
+    outcome: null,
   };
 }
 
@@ -40,24 +44,39 @@ export function stepGame(state: GameState, input: GameInput = {}): GameState {
     ? movePosition(state.player.position, direction)
     : state.player.position;
 
-  let items = state.items;
-  let pickups = state.pickups;
-  // Collect only when entering a new cell, never while stationary at a wall.
-  if (!samePosition(position, state.player.position)) {
-    const hit = collectItem(items, position, nextTick);
-    items = hit.items;
-    if (hit.collected) {
-      pickups = { ...pickups, [hit.collected]: pickups[hit.collected] + 1 };
-    }
-  }
-  const spawned = respawnDueItems(items, nextTick, state.rngState, [position]);
-  return {
+  let next: GameState = {
     ...state,
     tick: nextTick,
     elapsedMs: state.elapsedMs + GAME_CONFIG.TICK_MS,
     player: { position, direction },
-    items: spawned.items,
-    pickups,
-    rngState: spawned.seed,
   };
+
+  // Pickup effects happen before scheduled energy drain.
+  if (!samePosition(position, state.player.position)) {
+    const hit = collectItem(state.items, position, nextTick);
+    next = { ...next, items: hit.items };
+    if (hit.collected) {
+      next = {
+        ...next,
+        pickups: { ...state.pickups, [hit.collected]: state.pickups[hit.collected] + 1 },
+        ...applyPickup(next, hit.collected),
+      };
+    }
+  }
+  // A fatal pickup ends the run immediately: no further scoring or respawns.
+  if (next.energy === 0) return { ...next, phase: "ended", outcome: "burned-out" };
+
+  // Award points for a completed active second, including a second whose
+  // scheduled drain is fatal. No fractional-second score or drain.
+  if (Math.floor(next.elapsedMs / 1000) > Math.floor(state.elapsedMs / 1000)) {
+    next = { ...next, ...applyCompletedSecond(next) };
+  }
+  if (next.energy === 0) return { ...next, phase: "ended", outcome: "burned-out" };
+
+  const spawned = respawnDueItems(next.items, nextTick, next.rngState, [position]);
+  next = { ...next, items: spawned.items, rngState: spawned.seed };
+  if (next.elapsedMs >= GAME_CONFIG.SHIFT_DURATION_MS) {
+    return { ...next, phase: "ended", outcome: "survived" };
+  }
+  return next;
 }

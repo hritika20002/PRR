@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createGame, restartGame, stepGame, pauseGame, resumeGame } from "@/game/engine";
+import { GAME_CONFIG } from "@/game/config";
 import { getDirectionFromKey } from "@/game/input";
 import { useGameLoop } from "@/game/useGameLoop";
 import type { Direction, ItemKind } from "@/game/types";
@@ -72,6 +73,11 @@ export default function GameShell() {
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [handlePause]);
 
+  const secondsRemaining = Math.max(0, Math.ceil((GAME_CONFIG.SHIFT_DURATION_MS - state.elapsedMs) / 1000));
+  const countdown = `${String(Math.floor(secondsRemaining / 60)).padStart(2, "0")}:${String(secondsRemaining % 60).padStart(2, "0")}`;
+  const energyPercent = state.energy / GAME_CONFIG.MAX_ENERGY * 100;
+  const energyColor = energyPercent <= 25 ? "#fb7185" : energyPercent <= 50 ? "#fbbf24" : "#b8f96c";
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#11131e] p-4 font-mono text-white">
       <section className="w-full max-w-[520px]">
@@ -82,6 +88,24 @@ export default function GameShell() {
           <h1 className="text-2xl font-bold tracking-tight text-[#b8f96c] sm:text-3xl">PLEASE REMAIN RELEVANT.</h1>
           <p className="mt-2 text-sm text-[#9297a6]">Your probation begins now.</p>
         </header>
+        <div className="mb-3 grid grid-cols-2 gap-3">
+          <div className="rounded-lg border border-[#343845] bg-[#202430] p-3">
+            <p className="text-xs text-[#9297a6]">PRODUCTIVITY</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums">{state.score}</p>
+          </div>
+          <div className="rounded-lg border border-[#343845] bg-[#202430] p-3">
+            <p className="text-xs text-[#9297a6]">SHIFT REMAINING</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-[#b8f96c]">{countdown}</p>
+          </div>
+        </div>
+        <div className="mb-4">
+          <div className="mb-1 flex justify-between text-xs text-[#c3c8d3]">
+            <span>ENERGY</span><span>{state.energy}%</span>
+          </div>
+          <div role="progressbar" aria-label="Energy" aria-valuemin={0} aria-valuemax={100} aria-valuenow={state.energy} className="h-3 overflow-hidden rounded-full bg-[#343845]">
+            <div className="h-full rounded-full" style={{ width: `${energyPercent}%`, backgroundColor: energyColor }} />
+          </div>
+        </div>
         <div className="relative">
           <GameCanvas state={state} />
           {state.phase === "paused" && (
@@ -90,6 +114,17 @@ export default function GameShell() {
               <h2 className="text-3xl font-bold text-[#b8f96c]">SHIFT PAUSED</h2>
               <p className="mt-3 text-sm text-[#9297a6]">Your replacement can wait.</p>
               <button type="button" onClick={handleResume} className="mt-6 cursor-pointer rounded-lg bg-[#b8f96c] px-6 py-3 font-bold text-[#11131e] hover:bg-[#d0ff9c]">RESUME SHIFT</button>
+            </div>
+          )}
+          {state.phase === "ended" && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-[#11131e]/95 p-4 text-center" role="status">
+              <p className="mb-3 text-xs tracking-widest text-[#9297a6]">END OF SHIFT</p>
+              <h2 className={`text-2xl font-bold sm:text-3xl ${state.outcome === "survived" ? "text-[#b8f96c]" : "text-[#fb7185]"}`}>
+                {state.outcome === "survived" ? "SHIFT SURVIVED" : state.outcome === "replaced" ? "YOU HAVE BEEN REPLACED" : "BURNED OUT"}
+              </h2>
+              <p className="mt-3 text-sm text-[#c3c8d3]">Final score: {state.score}</p>
+              <p className="mt-1 text-sm text-[#c3c8d3]">Time survived: {(state.elapsedMs / 1000).toFixed(1)}s</p>
+              <button type="button" onClick={handleRestart} className="mt-5 cursor-pointer rounded-lg bg-[#b8f96c] px-5 py-3 font-bold text-[#11131e] hover:bg-[#d0ff9c]">PLAY AGAIN</button>
             </div>
           )}
         </div>
@@ -123,9 +158,10 @@ export default function GameShell() {
           </div>
         )}
         <div className="mt-5 rounded-lg border border-[#343845] p-3 text-center text-xs text-[#9297a6]">
-          <p>ARROW KEYS / WASD — MOVE</p><p className="mt-2">SPACE — PAUSE / RESUME</p><p className="mt-2">ESC — PAUSE</p>
+          <p>W +100 pts · S +150 pts · C +15 energy · M −12 energy</p>
+          <p className="mt-2">ARROW KEYS / WASD — MOVE</p><p className="mt-2">SPACE — PAUSE / RESUME</p><p className="mt-2">ESC — PAUSE</p>
         </div>
-        <p className="mt-5 text-center text-xs text-[#9297a6]">PHASE 2A // COLLECTIBLES</p>
+        <p className="mt-5 text-center text-xs text-[#9297a6]">PHASE 2B // CORPORATE SURVIVAL</p>
       </section>
     </main>
   );

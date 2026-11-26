@@ -10,6 +10,7 @@ export interface ItemSlot {
   respawnAtTick: number | null;
 }
 export type PickupCounts = Record<ItemKind, number>;
+export type GameOutcome = "survived" | "burned-out" | "replaced";
 export interface GameState {
   phase: GamePhase;
   tick: number;
@@ -18,5 +19,8 @@ export interface GameState {
   items: ItemSlot[];
   pickups: PickupCounts;
   rngState: number;
+  energy: number;
+  score: number;
+  outcome: GameOutcome | null;
 }
 export interface GameInput { direction?: Direction; }
