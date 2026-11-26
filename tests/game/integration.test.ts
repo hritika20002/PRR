@@ -7,10 +7,11 @@ function advance(state: GameState, ticks: number): GameState {
   for (let i = 0; i < ticks; i++) state = stepGame(state);
   return state;
 }
+// Keep the rival out of isolated pre-Phase-3 mechanic tests. Rival contact is tested separately.
 function pickup(kind: ItemKind, energy = 100): GameState {
   const state = restartGame(42);
   const id = state.items.find(item => item.kind === kind)!.id;
-  return { ...state, energy, items: state.items.map(item => item.id === id
+  return { ...state, energy, rival: { ...state.rival, position: { x: 0, y: 0 }, nextMoveTick: 10_000 }, items: state.items.map(item => item.id === id
     ? { ...item, position: { x: 8, y: 7 }, respawnAtTick: null }
     : { ...item, position: null, respawnAtTick: 10_000 }) };
 }

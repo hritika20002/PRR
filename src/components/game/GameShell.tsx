@@ -79,7 +79,9 @@ export default function GameShell() {
     };
   }, [handlePause]);
 
-  const pickup = activePickup(state);
+  const hit = state.lastRivalHit;
+  const showHit = state.phase === "playing" && hit !== null && (state.tick - hit.tick) * GAME_CONFIG.TICK_MS < GAME_CONFIG.FEEDBACK_MS && hit.tick >= (state.lastPickup?.tick ?? -1);
+  const pickup = showHit ? null : activePickup(state);
 
   return (
     <main className="flex min-h-screen items-start justify-center bg-[#11131e] p-4 font-mono text-white">
@@ -94,6 +96,11 @@ export default function GameShell() {
         <GameHUD state={state} />
         <div className="relative">
           <GameCanvas state={state} />
+          {showHit && hit && (
+            <div aria-hidden="true" className="pointer-events-none absolute z-10 rounded bg-[#11131e]/95 px-2 py-1 text-xs font-bold text-[#fb7185]" style={{ left: `${Math.min(83, Math.max(17, (hit.position.x + 0.5) / GAME_CONFIG.GRID_SIZE * 100))}%`, top: `${Math.max(2, hit.position.y / GAME_CONFIG.GRID_SIZE * 100 - 4)}%`, transform: "translateX(-50%)" }}>
+              {hit.energyDelta} ENERGY · AI HIT
+            </div>
+          )}
           {pickup && (
             <div key={pickup.tick} aria-hidden="true" className="pointer-events-none absolute z-10 whitespace-nowrap rounded bg-[#11131e]/95 px-1.5 py-1 text-xs font-bold shadow-md" style={{ left: `${Math.min(83, Math.max(17, (pickup.position.x + 0.5) / GAME_CONFIG.GRID_SIZE * 100))}%`, top: `${Math.max(2, pickup.position.y / GAME_CONFIG.GRID_SIZE * 100 - 4)}%`, transform: "translateX(-50%)", color: pickup.energyDelta < 0 ? "#fb7185" : "#b8f96c" }}>
               {pickupLabel(pickup)}
@@ -123,6 +130,7 @@ export default function GameShell() {
               <p className="mt-3 text-sm text-[#c3c8d3]">Final score: {state.score}</p>
               <p className="mt-1 text-sm text-[#c3c8d3]">Time survived: {(state.elapsedMs / 1000).toFixed(1)}s</p>
               <p className="mt-2 text-xs text-[#c3c8d3]">Tasks {state.pickups.work} · Skills {state.pickups.skill} · Coffee {state.pickups.coffee} · Meetings {state.pickups.meeting}</p>
+              <p className="mt-2 text-xs text-[#c3c8d3]">AI hits {state.rival.hits} · Peak threat {state.rival.peakLevel}/5</p>
               <p className="mt-2 text-xs text-[#9297a6]">{announcement(state)}</p>
               <button type="button" onClick={handleRestart} className="mt-5 cursor-pointer rounded-lg bg-[#b8f96c] px-5 py-3 font-bold text-[#11131e] hover:bg-[#d0ff9c]">PLAY AGAIN</button>
             </div>
@@ -146,6 +154,8 @@ export default function GameShell() {
           {[
             { label: "ENGINE STATUS", value: state.phase, green: true },
             { label: "PLAYER POSITION", value: `(${state.player.position.x}, ${state.player.position.y})` },
+            { label: "RIVAL POSITION", value: `(${state.rival.position.x}, ${state.rival.position.y})` },
+            { label: "AI HITS", value: state.rival.hits },
             { label: "DIRECTION", value: state.player.direction },
             { label: "ELAPSED TIME", value: `${(state.elapsedMs / 1000).toFixed(1)}s` },
           ].map((stat) => (
@@ -166,9 +176,10 @@ export default function GameShell() {
         )}
         <div className="mt-5 rounded-lg border border-[#343845] p-3 text-center text-xs text-[#9297a6]">
           <p>W +100 pts · S +150 pts · C +15 energy · M −12 energy</p>
+          <p className="mt-2 text-[#a78bfa]">Purple AI: −25 energy · Every 2 tasks: +1 threat · Skill: −1 threat</p>
           <p className="mt-2">ARROW KEYS / WASD — MOVE</p><p className="mt-2">SPACE — PAUSE / RESUME</p><p className="mt-2">ESC — PAUSE</p>
         </div>
-        <p className="mt-5 text-center text-xs text-[#9297a6]">PHASE 2C // GAMEPLAY INTEGRATION</p>
+        <p className="mt-5 text-center text-xs text-[#9297a6]">PHASE 3 // AI RIVAL</p>
       </section>
     </main>
   );

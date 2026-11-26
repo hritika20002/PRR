@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import { createGame, pauseGame, resumeGame, restartGame, startGame, stepGame } from "@/game/engine";
 import type { GameState, ItemKind } from "@/game/types";
 
+// Keep the rival out of isolated pre-Phase-3 mechanic tests. Rival contact is tested separately.
 function withPickup(kind: ItemKind): GameState {
   const state = startGame(createGame(42));
   const target = state.items.find((item) => item.kind === kind)!;
   return {
     ...state,
+    rival: { ...state.rival, position: { x: 0, y: 0 }, nextMoveTick: 10_000 },
     items: state.items.map((item) => item.id === target.id
       ? { ...item, position: { x: 8, y: 7 }, respawnAtTick: null }
       : { ...item, position: null, respawnAtTick: 10_000 }),

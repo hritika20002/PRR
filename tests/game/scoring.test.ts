@@ -3,9 +3,10 @@ import { createGame, startGame, stepGame, pauseGame, resumeGame, restartGame } f
 import { applyPickup } from "@/game/scoring";
 import type { GameState, ItemKind } from "@/game/types";
 
+// Keep the rival out of isolated pre-Phase-3 mechanic tests. Rival contact is tested separately.
 function emptyShift(): GameState {
   const state = startGame(createGame(42));
-  return { ...state, items: state.items.map(item => ({ ...item, position: null, respawnAtTick: 10_000 })) };
+  return { ...state, rival: { ...state.rival, position: { x: 0, y: 0 }, nextMoveTick: 10_000 }, items: state.items.map(item => ({ ...item, position: null, respawnAtTick: 10_000 })) };
 }
 function advance(state: GameState, ticks: number): GameState {
   for (let i = 0; i < ticks; i++) state = stepGame(state);

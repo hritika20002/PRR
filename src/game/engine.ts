@@ -3,11 +3,13 @@ import { movePosition } from "./movement";
 import { applyPickup, applyCompletedSecond } from "./scoring";
 import { collectItem } from "./collisions";
 import { createItemSlots, respawnDueItems, samePosition } from "./spawning";
+import { advanceRival, rivalIntervalTicks, safeRivalPosition, threatAfterPickup } from "./rival";
 import type { GameInput, GameState } from "./types";
 
 export function createGame(seed = 1): GameState {
   const position = { ...GAME_CONFIG.PLAYER_START };
-  const spawned = respawnDueItems(createItemSlots(), 0, seed >>> 0, [position]);
+  const rivalSpawn = safeRivalPosition(position, [], seed >>> 0);
+  const spawned = respawnDueItems(createItemSlots(), 0, rivalSpawn.seed, [position, rivalSpawn.position]);
   return {
     phase: "idle",
     tick: 0,
@@ -21,6 +23,9 @@ export function createGame(seed = 1): GameState {
     outcome: null,
     countdownMs: 0,
     lastPickup: null,
+    rival: { position: rivalSpawn.position, level: 0, peakLevel: 0, nextMoveTick: rivalIntervalTicks(0), immuneUntilTick: 0, hits: 0 },
+    lastRivalHit: null,
+    lastThreatChange: null,
   };
 }
 
@@ -79,10 +84,17 @@ export function stepGame(state: GameState, input: GameInput = {}): GameState {
           scoreDelta: effect.score - next.score, energyDelta: effect.energy - next.energy,
         },
       };
+      const level = threatAfterPickup(next.rival.level, hit.collected, next.pickups.work);
+      if (level !== next.rival.level) {
+        next = { ...next, lastThreatChange: { tick: nextTick, delta: level - next.rival.level }, rival: { ...next.rival, level, peakLevel: Math.max(level, next.rival.peakLevel) } };
+      }
     }
   }
   // A fatal pickup ends the run immediately: no further scoring or respawns.
   if (next.energy === 0) return { ...next, phase: "ended", outcome: "burned-out" };
+
+  next = advanceRival(next);
+  if (next.phase === "ended") return next;
 
   // Award points for a completed active second, including a second whose
   // scheduled drain is fatal. No fractional-second score or drain.
@@ -91,7 +103,7 @@ export function stepGame(state: GameState, input: GameInput = {}): GameState {
   }
   if (next.energy === 0) return { ...next, phase: "ended", outcome: "burned-out" };
 
-  const spawned = respawnDueItems(next.items, nextTick, next.rngState, [position]);
+  const spawned = respawnDueItems(next.items, nextTick, next.rngState, [position, next.rival.position]);
   next = { ...next, items: spawned.items, rngState: spawned.seed };
   if (next.elapsedMs >= GAME_CONFIG.SHIFT_DURATION_MS) {
     return { ...next, phase: "ended", outcome: "survived" };

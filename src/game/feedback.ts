@@ -25,6 +25,9 @@ export function announcement(state: GameState): string {
   if (state.outcome === "burned-out") return "Your position has been impacted.";
   if (state.outcome === "replaced") return "Thank you for training your replacement.";
   if (state.phase === "countdown") return "Your shift is about to begin.";
+  const recent = (tick: number) => (state.tick - tick) * GAME_CONFIG.TICK_MS < GAME_CONFIG.FEEDBACK_MS;
+  if (state.lastRivalHit && recent(state.lastRivalHit.tick) && state.lastRivalHit.tick >= (state.lastPickup?.tick ?? -1)) return "We are exploring operational efficiencies.";
+  if (state.lastThreatChange && recent(state.lastThreatChange.tick) && state.lastThreatChange.tick >= (state.lastPickup?.tick ?? -1)) return state.lastThreatChange.delta > 0 ? "Thank you for training your replacement." : "Congratulations. You are temporarily relevant.";
   if (state.lastPickup && (state.tick - state.lastPickup.tick) * GAME_CONFIG.TICK_MS < GAME_CONFIG.FEEDBACK_MS) {
     return messages[state.lastPickup.kind];
   }

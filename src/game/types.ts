@@ -18,6 +18,16 @@ export interface PickupEvent {
   scoreDelta: number;
   energyDelta: number;
 }
+export interface RivalState {
+  position: Position;
+  level: number;
+  peakLevel: number;
+  nextMoveTick: number;
+  immuneUntilTick: number;
+  hits: number;
+}
+export interface RivalHit { tick: number; position: Position; energyDelta: number; }
+export interface ThreatEvent { tick: number; delta: number; }
 export interface GameState {
   phase: GamePhase;
   tick: number;
@@ -31,5 +41,8 @@ export interface GameState {
   outcome: GameOutcome | null;
   countdownMs: number;
   lastPickup: PickupEvent | null;
+  rival: RivalState;
+  lastRivalHit: RivalHit | null;
+  lastThreatChange: ThreatEvent | null;
 }
 export interface GameInput { direction?: Direction; }

@@ -36,8 +36,22 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState): voi
     ctx.fillText(style.label, x + CELL_SIZE / 2, y + CELL_SIZE / 2);
   }
   ctx.restore();
+  const rx = state.rival.position.x * CELL_SIZE;
+  const ry = state.rival.position.y * CELL_SIZE;
+  ctx.fillStyle = COLORS.rival;
+  ctx.fillRect(rx + 3, ry + 6, 26, 23);
+  ctx.fillRect(rx + 14, ry + 2, 4, 5);
+  ctx.fillStyle = COLORS.background;
+  ctx.fillRect(rx + 7, ry + 12, 7, 5);
+  ctx.fillRect(rx + 18, ry + 12, 7, 5);
+  ctx.fillRect(rx + 10, ry + 23, 12, 3);
   const playerX = state.player.position.x * CELL_SIZE;
   const playerY = state.player.position.y * CELL_SIZE;
+  if (state.tick < state.rival.immuneUntilTick) {
+    ctx.strokeStyle = COLORS.rival;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(playerX + 1, playerY + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+  }
   ctx.fillStyle = COLORS.player;
   ctx.fillRect(playerX + 4, playerY + 4, CELL_SIZE - 8, CELL_SIZE - 8);
   ctx.fillStyle = COLORS.background;

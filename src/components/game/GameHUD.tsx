@@ -19,6 +19,14 @@ export default function GameHUD({ state }: { state: GameState }) {
             <p className="mt-1 text-2xl font-bold tabular-nums text-[#b8f96c]">{countdown}</p>
           </div>
         </div>
+        <div className="mb-3 rounded-lg border border-[#343845] bg-[#202430] p-2">
+          <div className="mb-1 flex justify-between text-xs text-[#c3c8d3]">
+            <span>AUTOMATION THREAT</span><span className="font-bold text-[#a78bfa]">LEVEL {state.rival.level}/5</span>
+          </div>
+          <div className="flex gap-1" role="meter" aria-label="Automation threat" aria-valuemin={0} aria-valuemax={5} aria-valuenow={state.rival.level}>
+            {Array.from({ length: 5 }, (_, i) => <div key={i} className="h-2 flex-1 rounded-sm" style={{ backgroundColor: i < state.rival.level ? "#a78bfa" : "#343845" }} />)}
+          </div>
+        </div>
         <div className="mb-4">
           <div className="mb-1 flex justify-between text-xs text-[#c3c8d3]">
             <span>ENERGY</span><span>{state.energy}%</span>
