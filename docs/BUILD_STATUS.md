@@ -22,3 +22,26 @@ Phase 1 — Arcade skeleton: config, types, movement and boundary tests, engine,
 No current build or test blocker. Lint, full directory structure, Git remote and commit not yet verified. No gameplay has been implemented or verified.
 
 Last commit: not yet verified.
+## Phase 1 — Arcade Engine
+
+Status: Manual QA passed; automated verification pending.
+
+### Implemented
+- 15 x 15 grid
+- Continuous player movement
+- Fixed-step simulation loop
+- HTML Canvas rendering
+- WASD and arrow key controls
+- Boundary collision handling
+- Pause, resume and restart
+- Automatic background-tab pausing
+- Keyboard input unit tests
+
+### Next milestone
+Phase 2 — Corporate Survival
+
+### Known limitations
+- Placeholder visuals
+- Desktop keyboard controls only
+- No collectibles, scoring, energy system or AI rival yet
+- Shift duration is not enforced yet
