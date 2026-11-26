@@ -37,8 +37,32 @@ Status: Manual QA passed; automated verification pending.
 - Automatic background-tab pausing
 - Keyboard input unit tests
 
-### Next milestone
-Phase 2 — Corporate Survival
+## Phase 2 — Corporate Survival
+
+Status: Complete
+
+- Phase 2A: Collectibles and deterministic spawning
+- Phase 2B: Energy, scoring and survival conditions
+- Phase 2C: Countdown, gameplay feedback and HR announcements
+
+Manual QA: Passed
+Automated tests: 69 expected
+
+## Next milestone
+
+Phase 3 — AI Rival
+
+## Design decision
+
+Final visual redesign is deferred until Phase 4.
+Prioritize gameplay functionality and reliability.
+
+## Known limitations
+
+- Passive survival remains possible.
+- Placeholder sprites and interface.
+- AI rival not yet implemented.
+- Mobile controls not yet implemented.
 
 ### Known limitations
 - Placeholder visuals

@@ -19,6 +19,8 @@ export function createGame(seed = 1): GameState {
     energy: GAME_CONFIG.START_ENERGY,
     score: 0,
     outcome: null,
+    countdownMs: 0,
+    lastPickup: null,
   };
 }
 
@@ -26,16 +28,27 @@ export function startGame(state: GameState): GameState {
   return state.phase === "idle" ? { ...state, phase: "playing" } : state;
 }
 export function pauseGame(state: GameState): GameState {
-  return state.phase === "playing" ? { ...state, phase: "paused" } : state;
+  return state.phase === "playing" || state.phase === "countdown"
+    ? { ...state, phase: "paused" } : state;
 }
 export function resumeGame(state: GameState): GameState {
-  return state.phase === "paused" ? { ...state, phase: "playing" } : state;
+  return state.phase === "paused"
+    ? { ...state, phase: state.countdownMs > 0 ? "countdown" : "playing" } : state;
 }
 export function restartGame(seed = 1): GameState {
   return startGame(createGame(seed));
 }
 
+// UI entry point; existing startGame/restartGame remain immediate for engine tests.
+export function beginShift(seed = 1): GameState {
+  return { ...createGame(seed), phase: "countdown", countdownMs: GAME_CONFIG.COUNTDOWN_MS };
+}
+
 export function stepGame(state: GameState, input: GameInput = {}): GameState {
+  if (state.phase === "countdown") {
+    const countdownMs = Math.max(0, state.countdownMs - GAME_CONFIG.TICK_MS);
+    return { ...state, countdownMs, phase: countdownMs === 0 ? "playing" : "countdown" };
+  }
   if (state.phase !== "playing") return state;
   const nextTick = state.tick + 1;
   const direction = input.direction ?? state.player.direction;
@@ -56,10 +69,15 @@ export function stepGame(state: GameState, input: GameInput = {}): GameState {
     const hit = collectItem(state.items, position, nextTick);
     next = { ...next, items: hit.items };
     if (hit.collected) {
+      const effect = applyPickup(next, hit.collected);
       next = {
         ...next,
         pickups: { ...state.pickups, [hit.collected]: state.pickups[hit.collected] + 1 },
-        ...applyPickup(next, hit.collected),
+        ...effect,
+        lastPickup: {
+          kind: hit.collected, tick: nextTick, position: { ...position },
+          scoreDelta: effect.score - next.score, energyDelta: effect.energy - next.energy,
+        },
       };
     }
   }

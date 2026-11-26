@@ -1,6 +1,6 @@
 export type Direction = "up" | "down" | "left" | "right";
 export interface Position { x: number; y: number; }
-export type GamePhase = "idle" | "playing" | "paused" | "ended";
+export type GamePhase = "idle" | "countdown" | "playing" | "paused" | "ended";
 export interface Player { position: Position; direction: Direction; }
 export type ItemKind = "work" | "skill" | "coffee" | "meeting";
 export interface ItemSlot {
@@ -11,6 +11,13 @@ export interface ItemSlot {
 }
 export type PickupCounts = Record<ItemKind, number>;
 export type GameOutcome = "survived" | "burned-out" | "replaced";
+export interface PickupEvent {
+  kind: ItemKind;
+  tick: number;
+  position: Position;
+  scoreDelta: number;
+  energyDelta: number;
+}
 export interface GameState {
   phase: GamePhase;
   tick: number;
@@ -22,5 +29,7 @@ export interface GameState {
   energy: number;
   score: number;
   outcome: GameOutcome | null;
+  countdownMs: number;
+  lastPickup: PickupEvent | null;
 }
 export interface GameInput { direction?: Direction; }

@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createGame, restartGame, stepGame, pauseGame, resumeGame } from "@/game/engine";
+import { createGame, beginShift, stepGame, pauseGame, resumeGame } from "@/game/engine";
 import { GAME_CONFIG } from "@/game/config";
+import { activePickup, announcement, pickupLabel } from "@/game/feedback";
+import GameHUD from "./GameHUD";
 import { getDirectionFromKey } from "@/game/input";
 import { useGameLoop } from "@/game/useGameLoop";
 import type { Direction, ItemKind } from "@/game/types";
@@ -29,7 +31,7 @@ export default function GameShell() {
   function handleRestart() {
     pendingDirection.current = undefined;
     const seed = Math.floor(Math.random() * 0x100000000);
-    setState(restartGame(seed));
+    setState(beginShift(seed));
   }
   const handlePause = useCallback(() => {
     pendingDirection.current = undefined;
@@ -49,14 +51,14 @@ export default function GameShell() {
         pendingDirection.current = direction;
         return;
       }
-      if (event.code === "Space" && (state.phase === "playing" || state.phase === "paused")) {
+      if (event.code === "Space" && (state.phase === "playing" || state.phase === "countdown" || state.phase === "paused")) {
         event.preventDefault();
         if (event.repeat) return;
-        if (state.phase === "playing") handlePause();
+        if (state.phase !== "paused") handlePause();
         else handleResume();
         return;
       }
-      if (event.key === "Escape" && state.phase === "playing") {
+      if (event.key === "Escape" && (state.phase === "playing" || state.phase === "countdown")) {
         event.preventDefault();
         handlePause();
       }
@@ -70,44 +72,40 @@ export default function GameShell() {
       if (document.hidden) handlePause();
     }
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handlePause);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handlePause);
+    };
   }, [handlePause]);
 
-  const secondsRemaining = Math.max(0, Math.ceil((GAME_CONFIG.SHIFT_DURATION_MS - state.elapsedMs) / 1000));
-  const countdown = `${String(Math.floor(secondsRemaining / 60)).padStart(2, "0")}:${String(secondsRemaining % 60).padStart(2, "0")}`;
-  const energyPercent = state.energy / GAME_CONFIG.MAX_ENERGY * 100;
-  const energyColor = energyPercent <= 25 ? "#fb7185" : energyPercent <= 50 ? "#fbbf24" : "#b8f96c";
+  const pickup = activePickup(state);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#11131e] p-4 font-mono text-white">
-      <section className="w-full max-w-[520px]">
+    <main className="flex min-h-screen items-start justify-center bg-[#11131e] p-4 font-mono text-white">
+      <section className="w-full max-w-[520px] py-2">
         <div className="mb-4 flex items-center justify-between text-xs tracking-widest text-[#9297a6]">
           <span>PRR / DEV BUILD</span><span className="text-[#b8f96c]">● ONLINE</span>
         </div>
-        <header className="mb-6 text-center">
+        <header className="mb-3 text-center">
           <h1 className="text-2xl font-bold tracking-tight text-[#b8f96c] sm:text-3xl">PLEASE REMAIN RELEVANT.</h1>
           <p className="mt-2 text-sm text-[#9297a6]">Your probation begins now.</p>
         </header>
-        <div className="mb-3 grid grid-cols-2 gap-3">
-          <div className="rounded-lg border border-[#343845] bg-[#202430] p-3">
-            <p className="text-xs text-[#9297a6]">PRODUCTIVITY</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">{state.score}</p>
-          </div>
-          <div className="rounded-lg border border-[#343845] bg-[#202430] p-3">
-            <p className="text-xs text-[#9297a6]">SHIFT REMAINING</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-[#b8f96c]">{countdown}</p>
-          </div>
-        </div>
-        <div className="mb-4">
-          <div className="mb-1 flex justify-between text-xs text-[#c3c8d3]">
-            <span>ENERGY</span><span>{state.energy}%</span>
-          </div>
-          <div role="progressbar" aria-label="Energy" aria-valuemin={0} aria-valuemax={100} aria-valuenow={state.energy} className="h-3 overflow-hidden rounded-full bg-[#343845]">
-            <div className="h-full rounded-full" style={{ width: `${energyPercent}%`, backgroundColor: energyColor }} />
-          </div>
-        </div>
+        <GameHUD state={state} />
         <div className="relative">
           <GameCanvas state={state} />
+          {pickup && (
+            <div key={pickup.tick} aria-hidden="true" className="pointer-events-none absolute z-10 whitespace-nowrap rounded bg-[#11131e]/95 px-1.5 py-1 text-xs font-bold shadow-md" style={{ left: `${Math.min(83, Math.max(17, (pickup.position.x + 0.5) / GAME_CONFIG.GRID_SIZE * 100))}%`, top: `${Math.max(2, pickup.position.y / GAME_CONFIG.GRID_SIZE * 100 - 4)}%`, transform: "translateX(-50%)", color: pickup.energyDelta < 0 ? "#fb7185" : "#b8f96c" }}>
+              {pickupLabel(pickup)}
+            </div>
+          )}
+          {state.phase === "countdown" && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-[#11131e]/85 text-center" role="status">
+              <p className="text-sm text-[#c3c8d3]">YOUR SHIFT STARTS IN</p>
+              <p className="mt-3 text-6xl font-bold text-[#b8f96c]">{Math.ceil(state.countdownMs / 1000)}</p>
+              <p className="mt-3 text-xs text-[#9297a6]">Get ready.</p>
+            </div>
+          )}
           {state.phase === "paused" && (
             <div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-[#11131e]/90 p-6 text-center">
               <p className="mb-3 text-xs tracking-widest text-[#9297a6]">TEMPORARY WORK INTERRUPTION</p>
@@ -124,6 +122,8 @@ export default function GameShell() {
               </h2>
               <p className="mt-3 text-sm text-[#c3c8d3]">Final score: {state.score}</p>
               <p className="mt-1 text-sm text-[#c3c8d3]">Time survived: {(state.elapsedMs / 1000).toFixed(1)}s</p>
+              <p className="mt-2 text-xs text-[#c3c8d3]">Tasks {state.pickups.work} · Skills {state.pickups.skill} · Coffee {state.pickups.coffee} · Meetings {state.pickups.meeting}</p>
+              <p className="mt-2 text-xs text-[#9297a6]">{announcement(state)}</p>
               <button type="button" onClick={handleRestart} className="mt-5 cursor-pointer rounded-lg bg-[#b8f96c] px-5 py-3 font-bold text-[#11131e] hover:bg-[#d0ff9c]">PLAY AGAIN</button>
             </div>
           )}
@@ -136,7 +136,13 @@ export default function GameShell() {
             </div>
           ))}
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="mt-3 rounded-lg border border-[#343845] bg-[#202430] p-2 text-sm" role="status">
+          <p className="text-xs text-[#b8f96c]">HR ANNOUNCEMENT</p>
+          <p className="mt-1">{announcement(state)}</p>
+        </div>
+        <details className="mt-3 text-xs text-[#9297a6]">
+          <summary className="cursor-pointer">Developer statistics</summary>
+          <div className="mt-2 grid grid-cols-2 gap-2">
           {[
             { label: "ENGINE STATUS", value: state.phase, green: true },
             { label: "PLAYER POSITION", value: `(${state.player.position.x}, ${state.player.position.y})` },
@@ -148,7 +154,8 @@ export default function GameShell() {
               <p className={`mt-1 text-lg font-bold uppercase ${stat.green ? "text-[#b8f96c]" : "text-white"}`}>{stat.value}</p>
             </div>
           ))}
-        </div>
+          </div>
+        </details>
         {state.phase === "idle" ? (
           <button type="button" onClick={handleRestart} className="mt-4 w-full cursor-pointer rounded-lg bg-[#b8f96c] px-4 py-3 font-bold text-[#11131e] hover:bg-[#d0ff9c]">CLOCK IN</button>
         ) : (
@@ -161,7 +168,7 @@ export default function GameShell() {
           <p>W +100 pts · S +150 pts · C +15 energy · M −12 energy</p>
           <p className="mt-2">ARROW KEYS / WASD — MOVE</p><p className="mt-2">SPACE — PAUSE / RESUME</p><p className="mt-2">ESC — PAUSE</p>
         </div>
-        <p className="mt-5 text-center text-xs text-[#9297a6]">PHASE 2B // CORPORATE SURVIVAL</p>
+        <p className="mt-5 text-center text-xs text-[#9297a6]">PHASE 2C // GAMEPLAY INTEGRATION</p>
       </section>
     </main>
   );
